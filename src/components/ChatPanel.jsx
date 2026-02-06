@@ -66,9 +66,15 @@ export default function ChatPanel({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <div className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-fuchsia-400 text-xs font-black text-slate-950 shadow-[0_14px_40px_rgba(99,102,241,0.25)]">
-                M
-              </div>
+              <div className="relative h-8 w-8 overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_14px_40px_rgba(0,0,0,0.35)]">
+  <img
+    src="/mascot.png"
+    alt="MapAI mascot"
+    className="h-full w-full object-cover"
+    draggable="false"
+  />
+</div>
+
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-white">MapAI</div>
                 <div className="truncate text-xs text-white/55">Dynamic Pricing Prototype</div>

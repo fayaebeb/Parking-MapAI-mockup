@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import CasePickerOverlay from '../components/CasePickerOverlay.jsx'
 import ChatPanel from '../components/ChatPanel.jsx'
 import ExplanationPanel from '../components/ExplanationPanel.jsx'
 import FlowArrows from '../components/FlowArrows.jsx'
@@ -261,9 +262,80 @@ export default function Simulation() {
   const handleSelectMethod = useCallback((method) => {
     setSelectedMethod(method)
     setSelectedCaseId(null)
+    setMapCaseOverride(null)
   }, [])
 
-  const handleClearCase = useCallback(() => setSelectedCaseId(null), [])
+  const handleSelectCase = useCallback((caseId) => {
+    setSelectedCaseId(caseId)
+    setMapCaseOverride(null)
+  }, [])
+
+  const handleClearCase = useCallback(() => {
+    setSelectedCaseId(null)
+    setMapCaseOverride(null)
+  }, [])
+
+  const showCasePickerOverlay = selectedMethod === 'dynamic' && !selectedCaseId
+  const previewCaseId = mapCaseOverride && mapCaseOverride !== 'none' ? mapCaseOverride : null
+
+  const casePickerCases = useMemo(
+    () => Object.values(CASES).map((c) => ({ id: c.id, name: c.name, subtitle: c.subtitle })),
+    [],
+  )
+
+  const casePickerMetricsById = useMemo(() => {
+    if (!showCasePickerOverlay) return {}
+
+    const baseMaxPeople = Math.max(
+      ...BASE_MESH_GEOJSON.features.map((f) => f?.properties?.timeSeries?.[selectedTimeIndex]?.peopleCount ?? 0),
+    )
+    const baseAvgOcc = mean(BASE_PARKING_LOTS.map((l) => l?.timeSeries?.[selectedTimeIndex]?.occupancyPercent ?? 0))
+    const baseAvgPrice = mean(BASE_PARKING_LOTS.map((l) => l?.timeSeries?.[selectedTimeIndex]?.price ?? 0))
+
+    const out = {}
+
+    for (const c of Object.values(CASES)) {
+      const context = buildScenarioContext({ caseId: c.id, meshGeojson: BASE_MESH_GEOJSON, timeIndex: selectedTimeIndex })
+
+      const afterMaxPeople = Math.max(
+        ...BASE_MESH_GEOJSON.features.map((f) =>
+          effectiveMeshPeopleCount({ feature: f, timeIndex: selectedTimeIndex, caseId: c.id, context }),
+        ),
+      )
+
+      const afterAvgOcc = mean(
+        BASE_PARKING_LOTS.map(
+          (l) =>
+            effectiveParkingAtTime({
+              lot: l,
+              timeIndex: selectedTimeIndex,
+              caseId: c.id,
+              context,
+            }).occupancyPercent ?? 0,
+        ),
+      )
+
+      const afterAvgPrice = mean(
+        BASE_PARKING_LOTS.map(
+          (l) =>
+            effectiveParkingAtTime({
+              lot: l,
+              timeIndex: selectedTimeIndex,
+              caseId: c.id,
+              context,
+            }).price ?? 0,
+        ),
+      )
+
+      out[c.id] = [
+        { label: 'Max mesh people', before: String(baseMaxPeople), after: String(afterMaxPeople) },
+        { label: 'Avg occupancy', before: `${Math.round(baseAvgOcc)}%`, after: `${Math.round(afterAvgOcc)}%` },
+        { label: 'Avg hourly price', before: `${formatYen(baseAvgPrice)}`, after: `${formatYen(afterAvgPrice)}` },
+      ]
+    }
+
+    return out
+  }, [selectedTimeIndex, showCasePickerOverlay])
 
   const captureMapPng = useCallback(async ({ labelForFallback } = {}) => {
     const map = mapRef.current?.getMap?.()
@@ -471,7 +543,7 @@ export default function Simulation() {
           selectedMethod={selectedMethod}
           onSelectMethod={handleSelectMethod}
           selectedCaseId={selectedCaseId}
-          onSelectCase={setSelectedCaseId}
+          onSelectCase={handleSelectCase}
           onClearCase={handleClearCase}
         />
 
@@ -509,6 +581,16 @@ export default function Simulation() {
                   showReportButton
                   onGenerateReport={handleGenerateReport}
                   generating={generatingReport}
+                />
+              ) : showCasePickerOverlay ? (
+                <CasePickerOverlay
+                  title="Select 1 case"
+                  subtitle="Hover a card to preview on the map. Click to apply."
+                  cases={casePickerCases}
+                  metricsByCaseId={casePickerMetricsById}
+                  previewCaseId={previewCaseId}
+                  onPreviewCase={(caseId) => setMapCaseOverride(caseId ?? null)}
+                  onSelectCase={handleSelectCase}
                 />
               ) : null
             }

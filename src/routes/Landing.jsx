@@ -26,9 +26,6 @@ export default function Landing() {
               <span className="text-xs font-semibold tracking-wide text-white/90">
                 MapAI
               </span>
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/80">
-                Mock
-              </span>
             </div>
           </div>
 
