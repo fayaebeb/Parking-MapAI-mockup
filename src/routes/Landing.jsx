@@ -38,11 +38,10 @@ export default function Landing() {
           </div>
 
           <p className="mt-6 text-center text-xs text-slate-500">
-            Frontend-only prototype • React + Tailwind + OpenStreetMap
+            Frontend-only prototype • React + Tailwind + MapLibre
           </p>
         </div>
       </div>
     </div>
   )
 }
-

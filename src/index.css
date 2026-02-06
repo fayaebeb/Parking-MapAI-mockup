@@ -13,26 +13,8 @@ body {
   @apply bg-slate-50 text-slate-900;
 }
 
-.leaflet-container {
+.maplibregl-map {
   height: 100%;
   width: 100%;
   font-family: inherit;
-}
-
-/* Screenshot/report fallback when cross-origin tiles can't be captured */
-.hide-tiles .leaflet-tile-pane {
-  display: none !important;
-}
-.hide-tiles .leaflet-container {
-  background: #e2e8f0; /* slate-200 */
-}
-
-/* Smooth visual updates for "simulation" state changes */
-.mesh-cell,
-.parking-dot,
-.flow-line {
-  transition:
-    fill var(--sim-transition, 250ms) linear,
-    stroke var(--sim-transition, 250ms) linear,
-    opacity var(--sim-transition, 250ms) linear;
 }

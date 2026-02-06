@@ -49,6 +49,12 @@ function gaussian(x, sigma) {
   return Math.exp(-(x * x) / (2 * sigma * sigma))
 }
 
+function offsetLatLon([lat, lon], dNorthMeters, dEastMeters) {
+  const metersPerDegLat = 111320
+  const metersPerDegLon = 111320 * Math.cos((lat * Math.PI) / 180)
+  return [lat + dNorthMeters / metersPerDegLat, lon + dEastMeters / metersPerDegLon]
+}
+
 function cellDeltas({ atLat, cellSizeMeters }) {
   const metersPerDegLat = 111320
   const metersPerDegLon = 111320 * Math.cos((atLat * Math.PI) / 180)
@@ -127,6 +133,27 @@ function generateParkingLots({ timeSlots }) {
     { id: 'P-09', name: 'North Ridge Lot', lat: 43.2033, lon: 141.0046, totalCapacity: 60 },
   ]
 
+  // Expand dataset: add deterministic synthetic lots around the canal area.
+  const extraSeed = hashStringToSeed('mapai:extra-parking:v1')
+  const extraRand = mulberry32(extraSeed)
+  const extraCount = 18
+  for (let i = 0; i < extraCount; i++) {
+    const angle = extraRand() * Math.PI * 2
+    const radius = 450 + extraRand() * 900 // meters (fits in the expanded mesh)
+    const dNorth = Math.cos(angle) * radius
+    const dEast = Math.sin(angle) * radius
+    const [lat, lon] = offsetLatLon(OTARU_CANAL_CENTER, dNorth, dEast)
+    const totalCapacity = Math.round(55 + extraRand() * 150)
+    const id = `P-${pad2(10 + i)}`
+    lots.push({
+      id,
+      name: `Peripheral Lot ${10 + i}`,
+      lat: Math.round(lat * 1e6) / 1e6,
+      lon: Math.round(lon * 1e6) / 1e6,
+      totalCapacity,
+    })
+  }
+
   const peakCenter = 13.25
   const peakWidthHrs = 1.9
 
@@ -160,8 +187,8 @@ export const BASE_MESH_GEOJSON = {
   type: 'FeatureCollection',
   features: generateMeshFeatures({
     center: OTARU_CANAL_CENTER,
-    rows: 7,
-    cols: 7,
+    rows: 13,
+    cols: 13,
     cellSizeMeters: 250,
     timeSlots: TIME_SLOTS,
   }),

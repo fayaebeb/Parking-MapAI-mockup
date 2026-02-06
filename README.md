@@ -1,7 +1,7 @@
 # MapAI (Frontend-only mock)
 
 MapAI is a frontend-only React app that mocks a “Dynamic Pricing Parking Lot System” to visualize overtourism congestion
-near **Otaru Canal, Hokkaido**. It uses **OpenStreetMap + Leaflet** with synthetic time-series data (no backend).
+near **Otaru Canal, Hokkaido**. It uses **MapLibre GL** with synthetic time-series data (no backend).
 
 ## Run
 
@@ -25,4 +25,4 @@ npm run dev
 ## Notes
 
 - All data is synthetic and deterministic (generated in code).
-- Screenshots use `html2canvas`. Some browsers may omit the base tiles due to cross-origin restrictions; overlays still export.
+- Screenshots use the MapLibre canvas export (`toDataURL`). Some browsers/styles may omit the base map due to cross-origin restrictions.

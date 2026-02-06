@@ -57,7 +57,6 @@ export default function ChatPanel({
           <Link to="/" className="hover:text-slate-700">
             ← Landing
           </Link>
-          <span className="font-medium text-slate-600">Scripted chat • no LLM</span>
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-import html2canvas from 'html2canvas'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import ChatPanel from '../components/ChatPanel.jsx'
 import ExplanationPanel from '../components/ExplanationPanel.jsx'
@@ -17,6 +16,66 @@ async function nextPaint() {
   await new Promise((r) => requestAnimationFrame(() => r()))
 }
 
+function createPlaceholderPng({ label, width = 1024, height = 640 } = {}) {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  ctx.fillStyle = '#e2e8f0'
+  ctx.fillRect(0, 0, width, height)
+
+  ctx.fillStyle = '#0f172a'
+  ctx.font = '600 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'
+  ctx.fillText('MapAI – Screenshot unavailable', 44, 84)
+
+  ctx.fillStyle = '#334155'
+  ctx.font = '16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'
+  ctx.fillText(label ?? 'Browser blocked canvas export (CORS/WebGL).', 44, 116)
+
+  ctx.fillStyle = '#64748b'
+  ctx.font = '12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'
+  ctx.fillText('Tip: use a MapLibre style/tiles that allow CORS, and keep preserveDrawingBuffer enabled.', 44, 144)
+
+  // Simple watermark
+  ctx.save()
+  ctx.translate(width - 30, height - 20)
+  ctx.rotate(-Math.PI / 40)
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.18)'
+  ctx.font = '700 44px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'
+  ctx.fillText('MapAI', -160, 0)
+  ctx.restore()
+
+  return canvas.toDataURL('image/png')
+}
+
+function waitForMapIdle(map, timeoutMs = 2200) {
+  return new Promise((resolve) => {
+    if (!map) return resolve()
+    let done = false
+
+    const finish = () => {
+      if (done) return
+      done = true
+      try {
+        map.off('idle', finish)
+      } catch {
+        // ignore
+      }
+      resolve()
+    }
+
+    try {
+      map.on('idle', finish)
+    } catch {
+      return resolve()
+    }
+
+    setTimeout(finish, timeoutMs)
+  })
+}
+
 export default function Simulation() {
   const initialTimeIndex = useMemo(() => {
     const idx = TIME_SLOTS.indexOf('13:00')
@@ -31,9 +90,8 @@ export default function Simulation() {
   const [selectedCaseId, setSelectedCaseId] = useState(null) // 'peak' | 'demand' | 'area' | null
   const [mapCaseOverride, setMapCaseOverride] = useState(null) // null | 'none' | caseId
   const [generatingReport, setGeneratingReport] = useState(false)
-  const [hideTilesForCapture, setHideTilesForCapture] = useState(false)
-
-  const mapCaptureRef = useRef(null)
+  const [mapStyleMode, setMapStyleMode] = useState('default') // 'default' | 'blank'
+  const mapRef = useRef(null)
 
   const caseDef = selectedCaseId ? CASES[selectedCaseId] : null
   const activeMapCaseId = mapCaseOverride === null ? selectedCaseId : mapCaseOverride === 'none' ? null : mapCaseOverride
@@ -118,25 +176,40 @@ export default function Simulation() {
 
   const handleClearCase = useCallback(() => setSelectedCaseId(null), [])
 
-  const captureMapPng = useCallback(async () => {
-    const root = mapCaptureRef.current
-    const el = root?.querySelector?.('.leaflet-container') ?? root
-    if (!el) throw new Error('Map element not found')
+  const captureMapPng = useCallback(
+    async ({ labelForFallback } = {}) => {
+      const map = mapRef.current?.getMap?.()
+      if (!map) {
+        return { dataUrl: createPlaceholderPng({ label: `${labelForFallback ?? ''} (map not ready)` }), tilesOmitted: true }
+      }
 
-    try {
-      const canvas = await html2canvas(el, { useCORS: true, backgroundColor: '#ffffff', scale: 2 })
-      return { dataUrl: canvas.toDataURL('image/png'), tilesOmitted: false }
-    } catch (err) {
-      // Fallback: hide tiles to avoid CORS-tainted screenshots.
-      setHideTilesForCapture(true)
-      await nextPaint()
-      await sleep(120)
-      const canvas = await html2canvas(el, { useCORS: false, backgroundColor: '#e2e8f0', scale: 2 })
-      const dataUrl = canvas.toDataURL('image/png')
-      setHideTilesForCapture(false)
-      return { dataUrl, tilesOmitted: true, error: String(err?.message ?? err) }
-    }
-  }, [])
+      await waitForMapIdle(map)
+
+      try {
+        const dataUrl = map.getCanvas().toDataURL('image/png')
+        return { dataUrl, tilesOmitted: false }
+      } catch (err) {
+        // Attempt a safer capture with a blank base style (avoids external tiles/sprites in some setups).
+        try {
+          setMapStyleMode('blank')
+          await nextPaint()
+          await sleep(180)
+          await waitForMapIdle(map)
+          const dataUrl = map.getCanvas().toDataURL('image/png')
+          setMapStyleMode('default')
+          return { dataUrl, tilesOmitted: true, error: String(err?.message ?? err) }
+        } catch (err2) {
+          setMapStyleMode('default')
+          return {
+            dataUrl: createPlaceholderPng({ label: `${labelForFallback ?? 'Screenshot failed'} (CORS/WebGL export blocked)` }),
+            tilesOmitted: true,
+            error: String(err2?.message ?? err2),
+          }
+        }
+      }
+    },
+    [],
+  )
 
   const generateReportHtml = useCallback(
     ({ beforeImage, afterImage, tilesNote }) => {
@@ -257,20 +330,20 @@ export default function Simulation() {
       setMapCaseOverride('none')
       await nextPaint()
       await sleep(250)
-      const before = await captureMapPng()
+      const before = await captureMapPng({ labelForFallback: 'Before (baseline)' })
 
       // 2) Capture "after" (case applied) screenshot
       setMapCaseOverride(selectedCaseId)
       await nextPaint()
       await sleep(250)
-      const after = await captureMapPng()
+      const after = await captureMapPng({ labelForFallback: 'After (case applied)' })
 
       // 3) Restore normal map rendering
       setMapCaseOverride(prevOverride)
 
       const tilesOmitted = before.tilesOmitted || after.tilesOmitted
       const tilesNote = tilesOmitted
-        ? 'Tile screenshots may omit the base map due to cross‑origin browser restrictions; overlays are captured reliably.'
+        ? 'Base map may be omitted in screenshots due to browser cross‑origin restrictions.'
         : ''
 
       const html = generateReportHtml({
@@ -283,7 +356,7 @@ export default function Simulation() {
     } finally {
       setMapCaseOverride(prevOverride)
       setGeneratingReport(false)
-      setHideTilesForCapture(false)
+      setMapStyleMode('default')
     }
   }, [captureMapPng, downloadReport, generateReportHtml, mapCaseOverride, selectedCaseId])
 
@@ -318,15 +391,14 @@ export default function Simulation() {
             parkingLots={BASE_PARKING_LOTS}
             timeSlots={TIME_SLOTS}
             selectedTimeIndex={selectedTimeIndex}
-            styleKey={activeMapCaseId ?? 'base'}
             timelineVisible={timelineVisible}
             onChangeTimeIndex={handleChangeTimeIndex}
             transitionMs={transitionMs}
             getPeopleCount={getPeopleCount}
             getLotAtTime={getLotAtTime}
-            captureRef={mapCaptureRef}
-            hideTiles={hideTilesForCapture}
-            overlayLines={arrows.length ? <FlowArrows arrows={arrows} /> : null}
+            mapRef={mapRef}
+            mapStyleMode={mapStyleMode}
+            overlayLines={arrows.length ? <FlowArrows arrows={arrows} transitionMs={transitionMs} /> : null}
             overlayRight={
               selectedMethod === 'dynamic' && selectedCaseId ? (
                 <ExplanationPanel
