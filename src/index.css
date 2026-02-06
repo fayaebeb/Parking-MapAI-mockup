@@ -10,11 +10,121 @@ body,
 
 body {
   margin: 0;
-  @apply bg-slate-50 text-slate-900;
+  @apply bg-slate-950 text-white;
 }
 
+/* Map canvas */
 .maplibregl-map {
   height: 100%;
   width: 100%;
   font-family: inherit;
+}
+
+/* Optional: nicer MapLibre control styling when wrapped */
+.maplibregl-ctrl-group {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(2, 6, 23, 0.55) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+
+.maplibregl-ctrl-group button {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
+  filter: invert(1) opacity(0.9);
+}
+
+/* Popups: glass + dark */
+.maplibregl-popup-content {
+  background: rgba(2, 6, 23, 0.78) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 18px !important;
+  padding: 0 !important; /* we wrap content inside */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.6) !important;
+}
+
+.maplibregl-popup-close-button {
+  right: 6px !important;
+  top: 6px !important;
+  border-radius: 12px !important;
+  padding: 6px 8px !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.maplibregl-popup-tip {
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.35));
+}
+
+/* Timeline slider: modern thumb + focus ring */
+.timeline-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 32px;
+}
+
+.timeline-range:focus {
+  outline: none;
+}
+
+.timeline-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+
+.timeline-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18), 0 12px 30px rgba(0, 0, 0, 0.45);
+  margin-top: -7px;
+  cursor: pointer;
+}
+
+.timeline-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.38), 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.timeline-range::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+
+.timeline-range::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18), 0 12px 30px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.timeline-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.38), 0 12px 30px rgba(0, 0, 0, 0.45);
 }
